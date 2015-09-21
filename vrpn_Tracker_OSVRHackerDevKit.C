@@ -15,6 +15,7 @@
 #include "vrpn_FixedPoint.h" // for vrpn::FixedPoint
 #include <quat.h>            // for Q_W, Q_X, etc.
 
+#include <cmath>     // for abs
 #include <cstring>   // for memset
 #include <stdexcept> // for logic_error
 
@@ -118,7 +119,16 @@ void vrpn_Tracker_OSVRHackerDevKit::on_data_received(std::size_t bytes,
         angVel[2] =
             VelFixedPoint(vrpn_unbuffer_from_little_endian<vrpn_int16>(buffer))
                 .get<vrpn_float64>();
+        static const double maxAngVel = 7;
+        if (std::abs(angVel[0]) > maxAngVel ||
+            std::abs(angVel[1]) > maxAngVel ||
+            std::abs(angVel[2]) > maxAngVel) {
 
+            send_text_message(vrpn_TEXT_WARNING) << "Tracker returned an "
+                                                    "out-of-range angular "
+                                                    "velocity: discarding";
+            return;
+        }
         // Given XYZ radians per second velocity.
         q_from_euler(vel_quat, angVel[2] * vel_quat_dt, angVel[1] * vel_quat_dt,
                      angVel[0] * vel_quat_dt);
